@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const todosRoute = require('./routes/todos');
+const authRoute = require('./routes/auth');
+const adminRoute = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,7 +16,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auth', authRoute);
 app.use('/api/todos', todosRoute);
+app.use('/api/admin', adminRoute);
 
 // Root endpoint
 app.get('/', (req, res) => {

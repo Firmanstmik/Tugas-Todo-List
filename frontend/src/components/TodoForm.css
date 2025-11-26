@@ -1,8 +1,14 @@
 .todo-form {
   display: flex;
-  gap: 12px;
-  margin-bottom: 30px;
+  gap: 10px;
+  margin-bottom: 16px;
   animation: fadeInUp 0.6s ease-out 0.2s both;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  box-sizing: border-box;
 }
 
 @keyframes fadeInUp {
@@ -18,10 +24,10 @@
 
 .todo-input {
   flex: 1;
-  padding: 16px 20px;
+  padding: 12px 16px;
   border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 10px;
+  font-size: 0.95rem;
   outline: none;
   transition: all 0.3s ease;
   background: white;
@@ -45,18 +51,19 @@
 }
 
 .add-button {
-  padding: 16px 32px;
+  padding: 12px 24px;
   background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
 }
 
 .add-button::before {
@@ -124,9 +131,34 @@
   .todo-form {
     flex-direction: column;
     gap: 10px;
+    padding: 12px;
+  }
+
+  .todo-input {
+    font-size: 0.9rem;
+    padding: 10px 14px;
   }
 
   .add-button {
     width: 100%;
+    padding: 12px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .todo-form {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .todo-input {
+    font-size: 0.85rem;
+    padding: 10px 12px;
+  }
+
+  .add-button {
+    padding: 10px;
+    font-size: 0.8rem;
   }
 }

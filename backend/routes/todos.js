@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // GET /api/todos - Get all todos
 router.get('/', async (req, res) => {
@@ -44,10 +48,27 @@ router.get('/', async (req, res) => {
     });
     
     // Execute query with timeout
+    // Admin can see all todos, regular users only see their own
     let rows;
     try {
+      let query, params;
+      if (req.user.role === 'admin') {
+        // Admin sees all todos with user info
+        query = `
+          SELECT t.*, u.username as owner_username, u.email as owner_email 
+          FROM todos t 
+          LEFT JOIN users u ON t.user_id = u.id 
+          ORDER BY t.id DESC
+        `;
+        params = [];
+      } else {
+        // Regular users only see their own todos
+        query = 'SELECT * FROM todos WHERE user_id = ? ORDER BY id DESC';
+        params = [req.user.id];
+      }
+      
       rows = await Promise.race([
-        pool.query('SELECT * FROM todos ORDER BY id DESC'),
+        pool.query(query, params),
         timeoutPromise
       ]);
       console.log('✅ Query executed successfully');
@@ -112,8 +133,8 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      'INSERT INTO todos (title, completed) VALUES (?, ?)',
-      [title.trim(), false]
+      'INSERT INTO todos (title, completed, user_id) VALUES (?, ?, ?)',
+      [title.trim(), false, req.user.id]
     );
 
     // Fetch the inserted todo
@@ -136,10 +157,16 @@ router.put('/:id', async (req, res) => {
     const { title, completed } = req.body;
 
     // Check if todo exists
-    const existingTodo = await pool.query(
-      'SELECT * FROM todos WHERE id = ?',
-      [id]
-    );
+    // Admin can update any todo, regular users can only update their own
+    let existingTodo;
+    if (req.user.role === 'admin') {
+      existingTodo = await pool.query('SELECT * FROM todos WHERE id = ?', [id]);
+    } else {
+      existingTodo = await pool.query(
+        'SELECT * FROM todos WHERE id = ? AND user_id = ?',
+        [id, req.user.id]
+      );
+    }
 
     if (existingTodo.length === 0) {
       return res.status(404).json({ error: 'Todo not found' });
@@ -167,17 +194,23 @@ router.put('/:id', async (req, res) => {
     }
 
     values.push(id);
+    
+    // Admin can update any todo, regular users can only update their own
+    let whereClause;
+    if (req.user.role === 'admin') {
+      whereClause = 'WHERE id = ?';
+    } else {
+      whereClause = 'WHERE id = ? AND user_id = ?';
+      values.push(req.user.id);
+    }
 
     await pool.query(
-      `UPDATE todos SET ${updates.join(', ')} WHERE id = ?`,
+      `UPDATE todos SET ${updates.join(', ')} ${whereClause}`,
       values
     );
 
     // Fetch updated todo
-    const updatedTodo = await pool.query(
-      'SELECT * FROM todos WHERE id = ?',
-      [id]
-    );
+    const updatedTodo = await pool.query('SELECT * FROM todos WHERE id = ?', [id]);
 
     res.json(updatedTodo[0]);
   } catch (error) {
@@ -192,16 +225,27 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     // Check if todo exists
-    const existingTodo = await pool.query(
-      'SELECT * FROM todos WHERE id = ?',
-      [id]
-    );
+    // Admin can delete any todo, regular users can only delete their own
+    let existingTodo;
+    if (req.user.role === 'admin') {
+      existingTodo = await pool.query('SELECT * FROM todos WHERE id = ?', [id]);
+    } else {
+      existingTodo = await pool.query(
+        'SELECT * FROM todos WHERE id = ? AND user_id = ?',
+        [id, req.user.id]
+      );
+    }
 
     if (existingTodo.length === 0) {
       return res.status(404).json({ error: 'Todo not found' });
     }
 
-    await pool.query('DELETE FROM todos WHERE id = ?', [id]);
+    // Delete todo
+    if (req.user.role === 'admin') {
+      await pool.query('DELETE FROM todos WHERE id = ?', [id]);
+    } else {
+      await pool.query('DELETE FROM todos WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    }
 
     res.json({ message: 'Todo deleted successfully' });
   } catch (error) {
